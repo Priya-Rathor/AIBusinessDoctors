@@ -1,0 +1,7 @@
+langchain-openai==0.3.13
+langchain-community==0.3.21
+langchain-core==0.3.52
+langgraph==0.3.31
+openai==1.75.0
+python-dotenv==1.1.0
+tiktoken==0.9.0
