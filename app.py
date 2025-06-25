@@ -1,7 +1,7 @@
 from typing import TypedDict, Annotated, Optional
 from langgraph.graph import add_messages, StateGraph, END
 from langchain_openai import ChatOpenAI
-from langchain_core.messages import HumanMessage, AIMessageChunk, ToolMessage , SystemMessage
+from langchain_core.messages import HumanMessage, AIMessageChunk, ToolMessage , SystemMessage,AIMessage
 from dotenv import load_dotenv
 from langchain_community.tools.tavily_search import TavilySearchResults
 from fastapi import FastAPI, Query
@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 import json
 from uuid import uuid4
 from langgraph.checkpoint.memory import MemorySaver
+import httpx
 
 load_dotenv()
 
@@ -128,9 +129,63 @@ def serialise_ai_message_chunk(chunk):
             f"Object of type {type(chunk).__name__} is not correctly formatted for serialisation"
         )
 
-async def generate_chat_responses(message: str, checkpoint_id: Optional[str] = None):
+
+
+
+
+
+
+
+
+# -----------------------------------------------------------------------------------------------------------
+#                                        Fetch last 10 messages
+# ------------------------------------------------------------------------------------------------------------
+
+async def fetch_last_messages(user_id:str,project_id:str,chat_type:str):
+    url = f"http://192.168.1.64:5000/api/v1/chats/{user_id}/{project_id}/{chat_type}"
+
+
+    async with httpx.AsyncClient() as client:
+        response =  await client.get(url)
+        response.raise_for_status()
+        data = response.json()
+
+
+        raw_messages = data.get("message_Data",{}).get("messages",[])
+        last_messages = raw_messages[-9:]
+
+        formatted_message = []
+        for m in last_messages:
+            role = m.get("role")
+            content = m.get("content","")
+            if role == "user":
+                formatted_message.append(HumanMessage(content=content))
+            elif role == "assistant":
+                formatted_message.append(AIMessage(content=content))    
+        return formatted_message
+
+#-----------------------------------------------------------------------------------------------------------------------------------
+#                                                Generate chat 
+#------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+
+async def generate_chat_responses(message: str, checkpoint_id: Optional[str] = None,user_id:Optional[str]=None,project_id:Optional[str]=None,chat_type:Optional[str]=None):
     is_new_conversation = checkpoint_id is None
+
+    previous_messages = []
+
+    if user_id and project_id and chat_type:
+        try:
+            previous_messages = await fetch_last_messages(user_id,project_id,chat_type)
+        except Exception as e:
+            print("error fetching previous messages:", str(e))
     
+
+
+
+
     if is_new_conversation:
         # Generate new checkpoint ID for first message in conversation
         new_checkpoint_id = str(uuid4())
@@ -145,6 +200,7 @@ async def generate_chat_responses(message: str, checkpoint_id: Optional[str] = N
         events = graph.astream_events(
             {"messages":[
               SystemMessage(content=system_prompt),
+              *previous_messages,
                HumanMessage(content=message)
             ]},
             version="v2",
@@ -163,6 +219,7 @@ async def generate_chat_responses(message: str, checkpoint_id: Optional[str] = N
         events = graph.astream_events(
             {"messages": [
                 SystemMessage(content=system_prompt),
+                *previous_messages,
                 HumanMessage(content=message)
             ]},
             version="v2",
@@ -211,7 +268,7 @@ async def generate_chat_responses(message: str, checkpoint_id: Optional[str] = N
     yield f"data: {{\"type\": \"end\"}}\n\n"
 
 @app.get("/chat_stream")
-async def chat_stream(message: str=Query(...), checkpoint_id: Optional[str] = Query(None)):
+async def chat_stream(message: str=Query(...), checkpoint_id: Optional[str] = Query(None), user_id:Optional[str]=Query(None), project_id:Optional[str]=Query(None),chat_type:Optional[str]=Query(None)):
     return StreamingResponse(
         generate_chat_responses(message, checkpoint_id), 
         media_type="text/event-stream"
