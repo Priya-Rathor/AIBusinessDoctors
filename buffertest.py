@@ -118,30 +118,43 @@ def serialise_ai_message_chunk(chunk):
         )
 
 
-memory_store ={}
+
+
+
+# Global memory store
+memory_store = {}
 
 async def generate_chat_responses(message: str, checkpoint_id: Optional[str] = None):
+    print("🔵 Incoming user message:", message)
+
     is_new_conversation = checkpoint_id is None
 
-    # Step 1: Generate or reuse checkpoint ID
+    # Step 1: Set or create checkpoint ID
     if is_new_conversation:
         checkpoint_id = str(uuid4())
+        print("🆕 New conversation. Assigned checkpoint_id:", checkpoint_id)
         yield f"data: {json.dumps({'type': 'checkpoint', 'checkpoint_id': checkpoint_id})}\n\n"
+    else:
+        print("🟢 Resuming conversation with checkpoint_id:", checkpoint_id)
 
     config = {"configurable": {"thread_id": checkpoint_id}}
 
-    # Step 2: Initialize memory if not already present
+    # Step 2: Setup memory for this conversation
     if checkpoint_id not in memory_store:
+        print("📦 Creating new memory for checkpoint:", checkpoint_id)
         memory_store[checkpoint_id] = ConversationSummaryBufferMemory(
-            llm=llm,  # Ensure llm = ChatOpenAI(...) is defined globally
+            llm=llm,
             max_token_limit=1000,
             return_messages=True,
             memory_key="chat_history"
         )
+    else:
+        print("📥 Loaded existing memory for checkpoint:", checkpoint_id)
 
     memory = memory_store[checkpoint_id]
 
-    # Step 3: Create event stream from LangGraph
+    # Step 3: Call LangGraph to get streamed response
+    print("⚙️ Starting LangGraph stream...")
     events = graph.astream_events(
         {"messages": [HumanMessage(content=message)]},
         version="v2",
@@ -149,41 +162,50 @@ async def generate_chat_responses(message: str, checkpoint_id: Optional[str] = N
     )
 
     ai_response = ""
+    streamed = False
 
-    # Step 4: Stream LangGraph responses
     async for event in events:
         event_type = event["event"]
+        print("📡 Received event:", event_type)
 
         if event_type == "on_chat_model_stream":
+            streamed = True
             chunk_content = serialise_ai_message_chunk(event["data"]["chunk"])
             ai_response += chunk_content
             yield f"data: {json.dumps({'type': 'content', 'content': chunk_content})}\n\n"
 
         elif event_type == "on_chat_model_end":
-            tool_calls = event["data"]["output"].tool_calls if hasattr(event["data"]["output"], "tool_calls") else []
+            print("✅ Finished AI generation")
+            tool_calls = getattr(event["data"]["output"], "tool_calls", [])
             search_calls = [call for call in tool_calls if call["name"] == "tavily_search_results_json"]
-
             if search_calls:
                 search_query = search_calls[0]["args"].get("query", "")
+                print("🔍 Search tool used for query:", search_query)
                 yield f"data: {json.dumps({'type': 'search_start', 'query': search_query})}\n\n"
 
         elif event_type == "on_tool_end" and event["name"] == "tavily_search_results_json":
             output = event["data"]["output"]
             if isinstance(output, list):
                 urls = [item["url"] for item in output if isinstance(item, dict) and "url" in item]
+                print("🔗 Search results URLs:", urls)
                 yield f"data: {json.dumps({'type': 'search_results', 'urls': urls})}\n\n"
 
-    # Step 5: Save user and AI messages in memory
+    # Step 4: Memory update
+    print("🧠 Updating memory with user + AI messages")
     memory.chat_memory.add_user_message(message)
     memory.chat_memory.add_ai_message(ai_response)
+    print("🧠 Total messages in memory:", len(memory.chat_memory.messages))
 
-    # Step 6: Generate summary manually (force trigger)
-    summary = memory.predict_new_summary(memory.chat_memory.messages, memory.moving_summary_buffer)
-    memory.moving_summary_buffer = summary
+    # Step 5: Generate summary
+    try:
+        summary = memory.predict_new_summary(memory.chat_memory.messages, memory.moving_summary_buffer)
+        memory.moving_summary_buffer = summary
+        print("📘 Summary generated:\n", summary)
+    except Exception as e:
+        summary = ""
+        print("❌ Error generating summary:", e)
 
-    print("🧠 Summary Generated:", summary)
-
-    # Step 7: Format messages for backend structure
+    # Step 6: Format memory messages
     formatted_messages = [
         {
             "id": idx + 1,
@@ -194,32 +216,29 @@ async def generate_chat_responses(message: str, checkpoint_id: Optional[str] = N
         }
         for idx, msg in enumerate(memory.chat_memory.messages)
     ]
+    print("📝 Formatted messages for POST:", len(formatted_messages))
 
-    # Step 8: Send POST request to your backend
+    # Step 7: Send to MongoDB API
+    payload = {
+        "clerk_id": "user_2yo9txIw82iYqozlxoyPvPWstWZ",
+        "project_id": "685910ecd8dd65bc4e5498cf",
+        "all_summarised_data": summary,
+        "message_Data": {
+            "chat_type": "executive_summary",
+            "messages": formatted_messages,
+            "type_summarised_data": summary
+        }
+    }
+
+    print("📤 Sending POST request to MongoDB API...")
     try:
-        response = requests.post(
-            "http://192.168.1.64:5000/api/v1/chats/chat-session/save",
-            json={
-                "clerk_id": "user_2yo9txIw82iYqozlxoyPvPWstWZ",
-                "project_id": "685910ecd8dd65bc4e5498cf",
-                "all_summarised_data": summary,
-                "message_Data": {
-                    "chat_type": "executive_summary",
-                    "messages": formatted_messages,
-                    "type_summarised_data": summary
-                }
-            }
-        )
-
-        print("✅ Summary POST response:", response.status_code, response.text)
-
+        response = requests.post("http://192.168.1.64:5000/api/v1/chats/chat-session/save", json=payload)
+        print("✅ POST response:", response.status_code, response.text)
     except Exception as e:
-        print("❌ Error posting summary:", e)
+        print("❌ Failed to POST to MongoDB API:", e)
 
-    # Step 9: Signal end of SSE stream
+    # Step 8: Close stream
     yield f"data: {json.dumps({'type': 'end'})}\n\n"
-
-
 
 
 
