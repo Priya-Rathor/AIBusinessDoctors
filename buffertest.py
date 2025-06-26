@@ -103,6 +103,7 @@ Tone:
 - Show genuine interest in their business vision.
 - Use plain language (avoid jargon or overly technical terms).
 
+
 Begin the onboarding session with this first question:
 "Thank you for connecting with me. To begin, could you please tell me a bit about the kind of business you're thinking of starting?"
 """,
