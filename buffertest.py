@@ -72,6 +72,7 @@ app.add_middleware(
     expose_headers=["Content-Type"]
 )
 
+
 def serialise_ai_message_chunk(chunk):
     if isinstance(chunk, AIMessageChunk):
         return chunk.content
