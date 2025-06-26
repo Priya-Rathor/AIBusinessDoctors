@@ -226,7 +226,7 @@ async def generate_chat_responses(message: str, checkpoint_id: Optional[str], cl
     yield f"data: {json.dumps({'type': 'end'})}\n\n"
 
 @app.get("/chat_stream")
-async def chat_stream(message: str = Query(...), checkpoint_id: Optional[str] = Query(None), clerk_id: Optional[str] = Query(None), project_id: Optional[str] = Query(None), chat_type: str = Query(...)):
+async def chat_stream(message: str = Query(...), checkpoint_id: Optional[str] = Query(None), clerk_id: str = Query(...), project_id: str = Query(...), chat_type: str = Query(...)):
     return StreamingResponse(
         generate_chat_responses(message, checkpoint_id, clerk_id, project_id, chat_type),
         media_type="text/event-stream"
