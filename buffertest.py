@@ -245,9 +245,7 @@ summary_prompt = ChatPromptTemplate.from_template(
 )
 
 
-
 memory_store = {}
-
 
 
 async def generate_chat_responses(message: str, checkpoint_id: Optional[str], clerk_id: Optional[str], project_id: Optional[str], chat_type: str):
