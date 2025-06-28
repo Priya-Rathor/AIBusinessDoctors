@@ -354,6 +354,7 @@ async def generate_chat_responses(message: str, checkpoint_id: Optional[str], cl
 
 
 
+
 @app.get("/chat_stream")
 async def chat_stream(message: str = Query(...), checkpoint_id: Optional[str] = Query(None), clerk_id: str = Query(...), project_id: str = Query(...), chat_type: str = Query(...)):
     return StreamingResponse(
