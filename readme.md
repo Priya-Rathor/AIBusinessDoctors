@@ -9,7 +9,7 @@ Here is a detailed `README.md` file with clear explanations for each part of you
 
 ---
 
-```markdown
+
 # 🧠 Business Advisor Chatbot (FastAPI + LangGraph)
 
 This project is a **modular, scalable chatbot** built with **FastAPI**, **LangGraph**, and **LangChain**. It supports **multi-turn conversations**, **memory summarization**, and **tool integration** (Tavily search). Designed for helping entrepreneurs and business users through structured prompts like executive summaries, market analysis, marketing strategies, and more.
