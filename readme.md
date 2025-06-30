@@ -187,13 +187,4 @@ pytest test/test_chat_stream.py
 
 ---
 
-## 💬 Questions?
-
-Feel free to open an issue or contact the author for enhancements or guidance.
-
-```
-
----
-
-Would you like me to insert this into your project as `README.md`, or generate a downloadable version?
 ```
