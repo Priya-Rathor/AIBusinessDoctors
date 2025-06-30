@@ -145,6 +145,7 @@ data: {"type":"end"}
 
 ---
 
+
 ## 📘 Supported Chat Types
 
 * `executive_summary`
