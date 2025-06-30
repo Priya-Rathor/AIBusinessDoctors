@@ -167,6 +167,7 @@ Example test:
 pytest test/test_chat_stream.py
 ```
 
+
 ---
 
 ## 🧩 Extending This Bot
