@@ -277,6 +277,7 @@ async def generate_chat_responses(message: str, checkpoint_id: Optional[str], cl
         except Exception as e:
             print("❌ Error fetching summary:", e)
 
+
     initial_messages = [HumanMessage(role="system", content=system_prompt)]
     if summary_text:
         initial_messages.append(HumanMessage(role="system", content=f"Previous conversation summary: {summary_text}"))
