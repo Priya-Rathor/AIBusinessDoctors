@@ -263,6 +263,7 @@ async def generate_chat_responses(message: str, checkpoint_id: Optional[str], cl
     system_prompt = chat_type_prompts.get(chat_type, "You are a helpful assistant.")
     summary_text = ""
 
+
     if checkpoint_id:
         summary_url = f"http://192.168.1.64:5000/api/v1/chats/{clerk_id}/{project_id}/{chat_type}"
         try:
