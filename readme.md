@@ -186,7 +186,7 @@ pytest test/test_chat_stream.py
 * [LangChain](https://github.com/langchain-ai/langchain)
 * [LangGraph](https://github.com/langchain-ai/langgraph)
 * [Tavily Search](https://www.tavily.com/)
-* Built with ❤️ by \[Your Name]
+* Built with ❤️ by Priya Rathor
 
 ---
 
