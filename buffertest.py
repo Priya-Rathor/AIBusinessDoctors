@@ -64,7 +64,6 @@ graph_builder.add_conditional_edges("model", tools_router)
 graph_builder.add_edge("tool_node", "model")
 graph = graph_builder.compile(checkpointer=memory)
 
-
 app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
