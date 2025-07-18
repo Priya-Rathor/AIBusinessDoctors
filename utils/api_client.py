@@ -18,3 +18,4 @@ def save_summary(clerk_id, project_id, chat_type, summary):
         requests.put(url, json={"content":summary})
     except:
         pass    
+    
