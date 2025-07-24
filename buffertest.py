@@ -19,6 +19,7 @@ import os
 load_dotenv()
 
 Backend_URL = os.getenv("Backend_URL")
+print("Backend URL:", Backend_URL)
 memory = MemorySaver()
 
 class State(TypedDict):
@@ -266,7 +267,8 @@ async def generate_chat_responses(message: str, checkpoint_id: Optional[str], cl
     summary_text = ""
 
     if checkpoint_id:
-        summary_url = f"Backend_URL/api/v1/chats/{clerk_id}/{project_id}/{chat_type}"
+        summary_url = f"{Backend_URL}/api/v1/chats/{clerk_id}/{project_id}/{chat_type}"
+
         try:
             res = requests.get(summary_url)
             if res.status_code == 200:
@@ -353,7 +355,7 @@ async def generate_chat_responses(message: str, checkpoint_id: Optional[str], cl
         print("❌ Error generating summary:", e)
 
     payload = {"content": summary}
-    put_url = f"Backend_URL/api/v1/chats/save-type-summary/{clerk_id}/{project_id}/{chat_type}"
+    put_url = f"{Backend_URL}/api/v1/chats/save-type-summary/{clerk_id}/{project_id}/{chat_type}"
 
     print("📤 Sending PUT request to node backend to update type summarised data...")
     try:
