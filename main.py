@@ -1,6 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routers.chat_router import chat_router
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI()
 

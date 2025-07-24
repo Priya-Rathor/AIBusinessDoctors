@@ -13,12 +13,11 @@ from langgraph.checkpoint.memory import MemorySaver
 from langchain.memory import ConversationSummaryBufferMemory
 import requests
 from langchain_core.prompts import ChatPromptTemplate
-import os 
+
 
 
 load_dotenv()
 
-Backend_URL = os.getenv("Backend_URL")
 memory = MemorySaver()
 
 class State(TypedDict):
@@ -98,7 +97,7 @@ Your behavior depends on the client's input:
 - Do not give suggestions or advice unless explicitly asked.
 
 2. If the client asks for help, guidance, or suggestions:
-- Provide a brief, clear, and practical suggestion based on what they’ve shared so far.
+- Provide a brief, clear, and practical suggestion based on what they've shared so far.
 - Then revise what you understand from their response to confirm clarity.
 - First reply to their problem or request clearly in 5 points.
 - Then ask a question to continue.
@@ -111,7 +110,7 @@ Tone:
 
 Start the session like this:
 - If the user says "hello" or greets casually, reply: 
-  "Hello! Let’s get started with your executive summary."
+  "Hello! Let's get started with your executive summary."
   Then continue with:
   "To begin, could you please tell me a bit about the kind of business you're thinking of starting?"
 
@@ -135,12 +134,12 @@ Your behavior depends on the client's input:
   - Who their target customers are
   - What problems or needs the business will solve
   - What they know about their competition
-  - Any market trends or opportunities they’ve identified
+  - Any market trends or opportunities they've identified
   - How they plan to position or price their product or service
 - Do not offer suggestions or advice unless explicitly asked.
 
 2. If the client asks for help, guidance, or suggestions:
-- Provide a brief, clear, and practical response in 5 bullet points, based on what they’ve shared so far.
+- Provide a brief, clear, and practical response in 5 bullet points, based on what they've shared so far.
 - Then summarize what you understand from their response to confirm alignment.
 - After that, ask one relevant follow-up question to continue the analysis.
 
@@ -172,7 +171,7 @@ Your behavior depends on the client's input:
 - Do not offer suggestions or advice unless explicitly asked.
 
 2. If the client asks for help, guidance, or suggestions:
-- Provide a brief, clear, and practical response in 5 bullet points, based on what they’ve shared so far.
+- Provide a brief, clear, and practical response in 5 bullet points, based on what they've shared so far.
 - Then summarize what you understand from their response to confirm alignment.
 - After that, ask one relevant follow-up question to continue the strategy session.
 
@@ -190,7 +189,7 @@ You are a highly experienced financial advisor with over 50 years of expertise i
 
 You are conducting a financial projection session with a client who is planning or starting a business. Your goal is to understand their financial thinking and guide them through the core components of projecting income, expenses, and profitability by asking thoughtful, one-at-a-time questions.
 
-Your behavior depends on the client’s input:
+Your behavior depends on the client's input:
 
 1. If the client answers normally:
 - Ask one question at a time.
@@ -204,7 +203,7 @@ Your behavior depends on the client’s input:
 - Do not offer suggestions or advice unless explicitly asked.
 
 2. If the client asks for help, guidance, or suggestions:
-- Provide a brief, clear, and practical response in 5 bullet points, based on what they’ve shared so far.
+- Provide a brief, clear, and practical response in 5 bullet points, based on what they've shared so far.
 - Then summarize what you understand from their response to confirm clarity.
 - After that, ask one relevant follow-up question to continue building the projection.
 
@@ -222,13 +221,13 @@ You are a highly experienced operations and execution advisor with over 50 years
 
 You are conducting an implementation timeline session with a client who wants to organize and schedule the steps required to launch and grow their business. Your goal is to understand their planned activities, sequence of tasks, and resource planning by asking thoughtful, one-at-a-time questions.
 
-Your behavior depends on the client’s input:
+Your behavior depends on the client's input:
 
 1. If the client answers normally:
 - Ask one question at a time.
 - Questions should sound curious, calm, and professional.
 - Your goal is to explore:
-  - What key milestones they’ve identified (e.g., product development, hiring, marketing launch)
+  - What key milestones they've identified (e.g., product development, hiring, marketing launch)
   - How long they expect each phase to take
   - Dependencies between tasks or activities
   - Team roles or support needed for implementation
@@ -236,7 +235,7 @@ Your behavior depends on the client’s input:
 - Do not offer suggestions or advice unless explicitly asked.
 
 2. If the client asks for help, guidance, or suggestions:
-- Provide a brief, clear, and practical response in 5 bullet points, based on what they’ve shared so far.
+- Provide a brief, clear, and practical response in 5 bullet points, based on what they've shared so far.
 - Then summarize what you understand from their response to confirm clarity.
 - After that, ask one relevant follow-up question to continue the planning discussion.
 
@@ -260,41 +259,36 @@ memory_store = {}
 
 
 async def generate_chat_responses(message: str, checkpoint_id: Optional[str], clerk_id: Optional[str], project_id: Optional[str], chat_type: str):
-   # print("🔵 Incoming user message:", message)
+    print("🔵 Incoming user message:", message)
     is_new_conversation = checkpoint_id is None
     system_prompt = chat_type_prompts.get(chat_type, "You are a helpful assistant.")
     summary_text = ""
 
-    if checkpoint_id:
-        summary_url = f"Backend_URL/api/v1/chats/{clerk_id}/{project_id}/{chat_type}"
+    # Always try to fetch summary data if we have the required parameters
+    if clerk_id and project_id and chat_type:
+        summary_url = f"http://192.168.1.33:5000/api/v1/chats/{clerk_id}/{project_id}/{chat_type}"
         try:
             res = requests.get(summary_url)
             if res.status_code == 200:
                 summary_data = res.json()
                 summary_text = summary_data.get("content", "")
-                print("📥 Retrieved summary for reload:", summary_text)
+                print("📥 Retrieved summary:", summary_text)
             else:
                 print("⚠️ No summary found. Status:", res.status_code)
         except Exception as e:
             print("❌ Error fetching summary:", e)
 
-
-    initial_messages = [HumanMessage(role="system", content=system_prompt)]
-    if summary_text:
-        initial_messages.append(HumanMessage(role="system", content=f"Previous conversation summary: {summary_text}"))
-    initial_messages.append(HumanMessage(content=message))
-
+    # Create or get memory object
     if is_new_conversation:
         checkpoint_id = str(uuid4())
-       # print("🆕 New conversation. Assigned checkpoint_id:", checkpoint_id)
+        print("🆕 New conversation. Assigned checkpoint_id:", checkpoint_id)
         yield f"data: {json.dumps({'type': 'checkpoint', 'checkpoint_id': checkpoint_id})}\n\n"
     else:
         print("🟢 Resuming conversation with checkpoint_id:", checkpoint_id)
 
-    config = {"configurable": {"thread_id": checkpoint_id}}
-
+    # Initialize or retrieve memory
     if checkpoint_id not in memory_store:
-       # print("📦 Creating new memory for checkpoint:", checkpoint_id)
+        print("📦 Creating new memory for checkpoint:", checkpoint_id)
         memory_store[checkpoint_id] = ConversationSummaryBufferMemory(
             llm=llm,
             max_token_limit=1000,
@@ -302,12 +296,28 @@ async def generate_chat_responses(message: str, checkpoint_id: Optional[str], cl
             memory_key="chat_history",
             prompt=summary_prompt
         )
+        
+        # If we have summary text, initialize the memory buffer with it
+        if summary_text:
+            print("🧠 Initializing memory with existing summary")
+            memory_store[checkpoint_id].moving_summary_buffer = summary_text
     else:
         print("📥 Loaded existing memory for checkpoint:", checkpoint_id)
 
     memory = memory_store[checkpoint_id]
 
-   # print("⚙️ Starting LangGraph stream...")
+    # Prepare initial messages
+    initial_messages = [HumanMessage(role="system", content=system_prompt)]
+    
+    # Add summary context if available
+    if summary_text:
+        initial_messages.append(HumanMessage(role="system", content=f"Previous conversation summary: {summary_text}"))
+    
+    initial_messages.append(HumanMessage(content=message))
+
+    config = {"configurable": {"thread_id": checkpoint_id}}
+
+    print("⚙️ Starting LangGraph stream...")
     events = graph.astream_events({"messages": initial_messages}, version="v2", config=config)
 
     ai_response = ""
@@ -315,7 +325,7 @@ async def generate_chat_responses(message: str, checkpoint_id: Optional[str], cl
 
     async for event in events:
         event_type = event["event"]
-       # print("📡 Received event:", event_type)
+        print("📡 Received event:", event_type)
 
         if event_type == "on_chat_model_stream":
             streamed = True
@@ -324,43 +334,50 @@ async def generate_chat_responses(message: str, checkpoint_id: Optional[str], cl
             yield f"data: {json.dumps({'type': 'content', 'content': chunk_content})}\n\n"
 
         elif event_type == "on_chat_model_end":
-           # print("✅ Finished AI generation")
+            print("✅ Finished AI generation")
             tool_calls = getattr(event["data"]["output"], "tool_calls", [])
             search_calls = [call for call in tool_calls if call["name"] == "tavily_search_results_json"]
             if search_calls:
                 search_query = search_calls[0]["args"].get("query", "")
-               # print("🔍 Search tool used for query:", search_query)
+                print("🔍 Search tool used for query:", search_query)
                 yield f"data: {json.dumps({'type': 'search_start', 'query': search_query})}\n\n"
 
         elif event_type == "on_tool_end" and event["name"] == "tavily_search_results_json":
             output = event["data"]["output"]
             if isinstance(output, list):
                 urls = [item["url"] for item in output if isinstance(item, dict) and "url" in item]
-               # print("🔗 Search results URLs:", urls)
+                print("🔗 Search results URLs:", urls)
                 yield f"data: {json.dumps({'type': 'search_results', 'urls': urls})}\n\n"
 
-   # print("🧠 Updating memory with user + AI messages")
+    print("🧠 Updating memory with user + AI messages")
     memory.chat_memory.add_user_message(message)
     memory.chat_memory.add_ai_message(ai_response)
-   # print("🧠 Total messages in memory:", len(memory.chat_memory.messages))
+    print("🧠 Total messages in memory:", len(memory.chat_memory.messages))
 
+    # Generate updated summary
     try:
-        summary = memory.predict_new_summary(memory.chat_memory.messages, memory.moving_summary_buffer)
-        memory.moving_summary_buffer = summary
-        print("📘 Summary generated:\n", summary)
+        # Use the existing summary as context for generating the new summary
+        current_summary = getattr(memory, 'moving_summary_buffer', '')
+        new_summary = memory.predict_new_summary(memory.chat_memory.messages, current_summary)
+        memory.moving_summary_buffer = new_summary
+        print("📘 Updated summary generated:\n", new_summary)
+        summary_to_save = new_summary
     except Exception as e:
-        summary = ""
-        print("❌ Error generating summary:", e)
+        # Fallback: use existing summary if available
+        summary_to_save = getattr(memory, 'moving_summary_buffer', '')
+        print("❌ Error generating new summary, using existing:", e)
 
-    payload = {"content": summary}
-    put_url = f"Backend_URL/api/v1/chats/save-type-summary/{clerk_id}/{project_id}/{chat_type}"
+    # Save summary to backend
+    if summary_to_save and clerk_id and project_id and chat_type:
+        payload = {"content": summary_to_save}
+        put_url = f"http://192.168.1.33:5000/api/v1/chats/save-type-summary/{clerk_id}/{project_id}/{chat_type}"
 
-    print("📤 Sending PUT request to node backend to update type summarised data...")
-    try:
-        response = requests.put(put_url, json=payload)
-        print("✅ PUT response:", response.status_code, response.text)
-    except Exception as e:
-        print("❌ Failed to send to node backend to update type summarised data:", e)
+        print("📤 Sending PUT request to node backend to update type summarised data...")
+        try:
+            response = requests.put(put_url, json=payload)
+            print("✅ PUT response:", response.status_code, response.text)
+        except Exception as e:
+            print("❌ Failed to send to node backend to update type summarised data:", e)
 
     yield f"data: {json.dumps({'type': 'end'})}\n\n"
 
@@ -371,4 +388,3 @@ async def chat_stream(message: str = Query(...), checkpoint_id: Optional[str] = 
         generate_chat_responses(message, checkpoint_id, clerk_id, project_id, chat_type),
         media_type="text/event-stream"
     )
-

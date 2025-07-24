@@ -1,0 +1,1549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Business Advisor Chat with Database</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .app-container {
+            width: 98%;
+            max-width: 1400px;
+            height: 95vh;
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 20px;
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .sidebar-header {
+            background: linear-gradient(135deg, #1f2937, #374151);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .sidebar-header h2 {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+
+        .database-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .db-button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 12px;
+        }
+
+        .db-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .search-box {
+            padding: 8px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 8px;
+            font-size: 12px;
+            margin-top: 10px;
+        }
+
+        .search-box::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+
+        .tab-buttons {
+            display: flex;
+            margin-bottom: 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .tab-button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: #f8fafc;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .tab-button.active {
+            background: #4f46e5;
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .conversation-item {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .conversation-item:hover {
+            background: #f1f5f9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .conversation-item.active {
+            border-color: #4f46e5;
+            background: rgba(79, 70, 229, 0.05);
+        }
+
+        .conversation-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .conversation-type {
+            background: #4f46e5;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .conversation-date {
+            font-size: 11px;
+            color: #64748b;
+            margin-left: auto;
+        }
+
+        .conversation-summary {
+            font-size: 12px;
+            color: #475569;
+            line-height: 1.4;
+            margin-bottom: 8px;
+        }
+
+        .conversation-stats {
+            display: flex;
+            gap: 15px;
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        .delete-button {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 20px;
+            height: 20px;
+            border: none;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            opacity: 0;
+            transition: all 0.3s ease;
+        }
+
+        .conversation-item:hover .delete-button {
+            opacity: 1;
+        }
+
+        .summary-item {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+        }
+
+        .summary-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .summary-type {
+            background: #22c55e;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .summary-content {
+            font-size: 12px;
+            color: #166534;
+            line-height: 1.4;
+        }
+
+        .chat-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .chat-header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .chat-type-selector {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .chat-type-btn {
+            padding: 8px 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 12px;
+        }
+
+        .chat-type-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .chat-type-btn.active {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: white;
+        }
+
+        .connection-status {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .user-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .user-info input {
+            padding: 8px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 8px;
+            font-size: 12px;
+        }
+
+        .user-info input::placeholder {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .current-conversation-info {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+            margin-top: 10px;
+            font-size: 11px;
+            text-align: left;
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .message {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: white;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, #10b981, #059669);
+        }
+
+        .message.ai .message-avatar {
+            background: linear-gradient(135deg, #6366f1, #4f46e5);
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 15px 18px;
+            border-radius: 18px;
+            line-height: 1.5;
+            position: relative;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.ai .message-content {
+            background: #f8fafc;
+            color: #334155;
+            border: 1px solid #e2e8f0;
+            border-bottom-left-radius: 4px;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 15px 18px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            border-bottom-left-radius: 4px;
+            max-width: 70%;
+        }
+
+        .typing-dots {
+            display: flex;
+            gap: 4px;
+        }
+
+        .typing-dots span {
+            width: 6px;
+            height: 6px;
+            background: #64748b;
+            border-radius: 50%;
+            animation: bounce 1.4s infinite;
+        }
+
+        .typing-dots span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+
+        .typing-dots span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+
+        @keyframes bounce {
+            0%, 60%, 100% {
+                transform: translateY(0);
+            }
+            30% {
+                transform: translateY(-10px);
+            }
+        }
+
+        .search-indicator {
+            display: none;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 12px;
+            padding: 12px;
+            margin: 10px 0;
+            color: #1e40af;
+            font-size: 14px;
+        }
+
+        .search-indicator.active {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            border-top: 1px solid #e2e8f0;
+            background: white;
+        }
+
+        .chat-input-wrapper {
+            position: relative;
+            display: flex;
+            gap: 12px;
+            align-items: flex-end;
+        }
+
+        .chat-input {
+            flex: 1;
+            min-height: 50px;
+            max-height: 120px;
+            padding: 15px 18px;
+            border: 2px solid #e2e8f0;
+            border-radius: 25px;
+            resize: none;
+            font-family: inherit;
+            font-size: 16px;
+            line-height: 1.4;
+            transition: all 0.3s ease;
+            overflow-y: auto;
+        }
+
+        .chat-input:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .send-button {
+            width: 50px;
+            height: 50px;
+            border: none;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .send-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(79, 70, 229, 0.3);
+        }
+
+        .send-button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .memory-info {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 12px;
+            padding: 12px;
+            margin: 10px 0;
+            font-size: 13px;
+            color: #166534;
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 12px;
+            padding: 12px;
+            margin: 10px 0;
+            color: #dc2626;
+            font-size: 14px;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #64748b;
+        }
+
+        .modal-body {
+            line-height: 1.6;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #4f46e5;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .sidebar::-webkit-scrollbar,
+        .chat-messages::-webkit-scrollbar,
+        .modal-content::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-track,
+        .chat-messages::-webkit-scrollbar-track,
+        .modal-content::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 10px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb,
+        .chat-messages::-webkit-scrollbar-thumb,
+        .modal-content::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover,
+        .chat-messages::-webkit-scrollbar-thumb:hover,
+        .modal-content::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        @media (max-width: 1200px) {
+            .app-container {
+                grid-template-columns: 300px 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .app-container {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+            }
+
+            .sidebar {
+                height: 200px;
+            }
+
+            .sidebar-content {
+                padding: 10px;
+            }
+
+            .user-info {
+                grid-template-columns: 1fr;
+            }
+
+            .chat-type-selector {
+                gap: 8px;
+            }
+
+            .chat-type-btn {
+                padding: 6px 12px;
+                font-size: 11px;
+            }
+
+            .message-content {
+                max-width: 85%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar with Database Content -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>📊 Database Manager</h2>
+                <div class="database-controls">
+                    <button class="db-button" onclick="databaseManager.loadAllConversations()">🔄 Refresh Data</button>
+                    <button class="db-button" onclick="databaseManager.exportData()">📥 Export All</button>
+                    <button class="db-button" onclick="databaseManager.clearAllData()">🗑️ Clear Database</button>
+                    <input type="text" class="search-box" id="searchBox" placeholder="Search conversations...">
+                </div>
+            </div>
+
+            <div class="sidebar-content">
+                <div class="tab-buttons">
+                    <button class="tab-button active" onclick="databaseManager.switchTab('conversations')">Conversations</button>
+                    <button class="tab-button" onclick="databaseManager.switchTab('summaries')">Summaries</button>
+                </div>
+
+                <div id="conversationsTab" class="tab-content active">
+                    <div id="conversationsList">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading conversations...
+                        </div>
+                    </div>
+                </div>
+
+                <div id="summariesTab" class="tab-content">
+                    <div id="summariesList">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading summaries...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Chat Interface -->
+        <div class="chat-container">
+            <div class="chat-header">
+                <div class="connection-status">
+                    <span class="status-dot"></span>
+                    <span>Connected</span>
+                </div>
+                <h1>AI Business Advisor</h1>
+                
+                <div class="user-info">
+                    <input type="text" id="clerkId" placeholder="Enter Clerk ID" value="user_12345">
+                    <input type="text" id="projectId" placeholder="Enter Project ID" value="project_67890">
+                </div>
+                
+                <div class="chat-type-selector">
+                    <button class="chat-type-btn active" data-type="executive_summary">Executive Summary</button>
+                    <button class="chat-type-btn" data-type="market_analysis">Market Analysis</button>
+                    <button class="chat-type-btn" data-type="marketing_strategy">Marketing Strategy</button>
+                    <button class="chat-type-btn" data-type="financial_projection">Financial Projection</button>
+                    <button class="chat-type-btn" data-type="implementation_timeline">Implementation Timeline</button>
+                </div>
+
+                <div class="current-conversation-info" id="currentConversationInfo">
+                    <strong>Current:</strong> New Conversation | Type: Executive Summary
+                </div>
+            </div>
+
+            <div class="chat-messages" id="chatMessages">
+                <div class="message ai">
+                    <div class="message-avatar">AI</div>
+                    <div class="message-content">
+                        Welcome! I'm your AI Business Advisor. Your conversation history is automatically saved and you can access previous conversations from the sidebar. Select a chat type above and start our conversation.
+                    </div>
+                </div>
+            </div>
+
+            <div class="chat-input-container">
+                <div class="chat-input-wrapper">
+                    <textarea 
+                        class="chat-input" 
+                        id="messageInput" 
+                        placeholder="Type your message here..." 
+                        rows="1"
+                    ></textarea>
+                    <button class="send-button" id="sendButton">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22,2 15,22 11,13 2,9 22,2"></polygon>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for viewing conversation details -->
+    <div class="modal" id="conversationModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Conversation Details</h3>
+                <button class="close-modal" onclick="databaseManager.closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody">
+                <!-- Content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Database Manager Class
+        class DatabaseManager {
+            constructor() {
+                this.conversations = [];
+                this.summaries = [];
+                this.currentTab = 'conversations';
+                this.searchQuery = '';
+                this.initializeEventListeners();
+                this.loadAllConversations();
+            }
+
+            initializeEventListeners() {
+                const searchBox = document.getElementById('searchBox');
+                searchBox.addEventListener('input', (e) => {
+                    this.searchQuery = e.target.value.toLowerCase();
+                    this.filterAndDisplayData();
+                });
+            }
+
+            async loadAllConversations() {
+                try {
+                    // Simulate API calls to your backend
+                    // Replace these URLs with your actual backend endpoints
+                    const conversationsResponse = await fetch('http://192.168.1.33:5000/api/v1/conversations/all');
+                    const summariesResponse = await fetch('http://192.168.1.33:5000/api/v1/summaries/all');
+                    
+                    if (conversationsResponse.ok) {
+                        this.conversations = await conversationsResponse.json();
+                    } else {
+                        // Mock data for demonstration
+                        this.conversations = this.generateMockConversations();
+                    }
+
+                    if (summariesResponse.ok) {
+                        this.summaries = await summariesResponse.json();
+                    } else {
+                        // Mock data for demonstration
+                        this.summaries = this.generateMockSummaries();
+                    }
+
+                    this.filterAndDisplayData();
+                } catch (error) {
+                    console.error('Error loading data:', error);
+                    // Use mock data on error
+                    this.conversations = this.generateMockConversations();
+                    this.summaries = this.generateMockSummaries();
+                    this.filterAndDisplayData();
+                }
+            }
+
+            generateMockConversations() {
+                return [
+                    {
+                        id: '1',
+                        clerk_id: 'user_12345',
+                        project_id: 'project_67890',
+                        chat_type: 'executive_summary',
+                        checkpoint_id: 'check_001',
+                        created_at: '2024-01-15T10:30:00Z',
+                        updated_at: '2024-01-15T11:45:00Z',
+                        message_count: 8,
+                        summary: 'Discussion about starting a tech consulting business focusing on small businesses. Explored target market, initial services, and pricing strategy.',
+                        last_message: 'Thank you for the insights on pricing. I think the value-based approach makes sense for consulting.',
+                        status: 'active'
+                    },
+                    {
+                        id: '2',
+                        clerk_id: 'user_12345',
+                        project_id: 'project_67890',
+                        chat_type: 'market_analysis',
+                        checkpoint_id: 'check_002',
+                        created_at: '2024-01-14T14:20:00Z',
+                        updated_at: '2024-01-14T15:30:00Z',
+                        message_count: 12,
+                        summary: 'Market research for e-commerce platform targeting millennials. Analyzed competition, identified gaps in user experience and mobile optimization.',
+                        last_message: 'The competitive landscape analysis was very helpful. I can see the opportunities in mobile-first design.',
+                        status: 'completed'
+                    },
+                    {
+                        id: '3',
+                        clerk_id: 'user_12345',
+                        project_id: 'project_67890',
+                        chat_type: 'financial_projection',
+                        checkpoint_id: 'check_003',
+                        created_at: '2024-01-13T09:15:00Z',
+                        updated_at: '2024-01-13T10:45:00Z',
+                        message_count: 15,
+                        summary: 'Financial planning for SaaS startup. Calculated burn rate, projected revenue growth, and funding requirements for first 18 months.',
+                        last_message: 'The cash flow projections look realistic. I need to focus on customer acquisition costs.',
+                        status: 'active'
+                    }
+                ];
+            }
+
+            generateMockSummaries() {
+                return [
+                    {
+                        id: '1',
+                        clerk_id: 'user_12345',
+                        project_id: 'project_67890',
+                        chat_type: 'executive_summary',
+                        content: 'Tech consulting business for small businesses. Services: web development, digital marketing, IT support. Target: 10-50 employee companies. Pricing: $150/hour consulting, $5k+ project minimums.',
+                        updated_at: '2024-01-15T11:45:00Z'
+                    },
+                    {
+                        id: '2',
+                        clerk_id: 'user_12345',
+                        project_id: 'project_67890',
+                        chat_type: 'market_analysis',
+                        content: 'E-commerce platform for millennials. Market size: $2B. Key competitors: Shopify, BigCommerce. Opportunity: mobile-first design, social integration, sustainability focus.',
+                        updated_at: '2024-01-14T15:30:00Z'
+                    },
+                    {
+                        id: '3',
+                        clerk_id: 'user_12345',
+                        project_id: 'project_67890',
+                        chat_type: 'financial_projection',
+                        content: 'SaaS startup financials. Monthly burn: $15k. Revenue projection: $5k MRR by month 6, $25k by month 12. Funding needed: $200k seed round.',
+                        updated_at: '2024-01-13T10:45:00Z'
+                    }
+                ];
+            }
+
+            switchTab(tabName) {
+                this.currentTab = tabName;
+                
+                // Update tab buttons
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                event.target.classList.add('active');
+                
+                // Update tab content
+                document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+                document.getElementById(tabName + 'Tab').classList.add('active');
+                
+                this.filterAndDisplayData();
+            }
+
+            filterAndDisplayData() {
+                if (this.currentTab === 'conversations') {
+                    this.displayConversations();
+                } else {
+                    this.displaySummaries();
+                }
+            }
+
+            displayConversations() {
+                const container = document.getElementById('conversationsList');
+                const filteredConversations = this.conversations.filter(conv => 
+                    conv.summary.toLowerCase().includes(this.searchQuery) ||
+                    conv.chat_type.toLowerCase().includes(this.searchQuery) ||
+                    conv.last_message.toLowerCase().includes(this.searchQuery)
+                );
+
+                if (filteredConversations.length === 0) {
+                    container.innerHTML = '<div class="loading">No conversations found</div>';
+                    return;
+                }
+
+                container.innerHTML = filteredConversations.map(conv => `
+                    <div class="conversation-item" data-id="${conv.id}" onclick="databaseManager.selectConversation('${conv.id}')">
+                        <button class="delete-button" onclick="event.stopPropagation(); databaseManager.deleteConversation('${conv.id}')">&times;</button>
+                        <div class="conversation-header">
+                            <span class="conversation-type">${conv.chat_type.replace('_', ' ')}</span>
+                            <span class="conversation-date">${new Date(conv.updated_at).toLocaleDateString()}</span>
+                        </div>
+                        <div class="conversation-summary">${conv.summary}</div>
+                        <div class="conversation-stats">
+                            <span>💬 ${conv.message_count} messages</span>
+                            <span>📅 ${this.getTimeAgo(conv.updated_at)}</span>
+                            <span class="status-${conv.status}">⚫ ${conv.status}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            displaySummaries() {
+                const container = document.getElementById('summariesList');
+                const filteredSummaries = this.summaries.filter(summary => 
+                    summary.content.toLowerCase().includes(this.searchQuery) ||
+                    summary.chat_type.toLowerCase().includes(this.searchQuery)
+                );
+
+                if (filteredSummaries.length === 0) {
+                    container.innerHTML = '<div class="loading">No summaries found</div>';
+                    return;
+                }
+
+                container.innerHTML = filteredSummaries.map(summary => `
+                    <div class="summary-item" onclick="databaseManager.viewSummaryDetails('${summary.id}')">
+                        <div class="summary-header">
+                            <span class="summary-type">${summary.chat_type.replace('_', ' ')}</span>
+                            <span class="conversation-date">${new Date(summary.updated_at).toLocaleDateString()}</span>
+                        </div>
+                        <div class="summary-content">${summary.content}</div>
+                    </div>
+                `).join('');
+            }
+
+            async selectConversation(conversationId) {
+                const conversation = this.conversations.find(conv => conv.id === conversationId);
+                if (!conversation) return;
+
+                // Update current conversation info
+                document.getElementById('currentConversationInfo').innerHTML = `
+                    <strong>Current:</strong> ${conversation.chat_type.replace('_', ' ')} | 
+                    ID: ${conversation.checkpoint_id.slice(0, 8)}... | 
+                    Messages: ${conversation.message_count}
+                `;
+
+                // Set chat type
+                chatInterface.currentChatType = conversation.chat_type;
+                chatInterface.checkpointId = conversation.checkpoint_id;
+
+                // Update active chat type button
+                document.querySelectorAll('.chat-type-btn').forEach(btn => btn.classList.remove('active'));
+                document.querySelector(`[data-type="${conversation.chat_type}"]`).classList.add('active');
+
+                // Mark as active in sidebar
+                document.querySelectorAll('.conversation-item').forEach(item => item.classList.remove('active'));
+                document.querySelector(`[data-id="${conversationId}"]`).classList.add('active');
+
+                // Load conversation messages
+                await this.loadConversationMessages(conversationId);
+            }
+
+            async loadConversationMessages(conversationId) {
+                try {
+                    const response = await fetch(`http://192.168.1.33:5000/api/v1/conversations/${conversationId}/messages`);
+                    
+                    if (response.ok) {
+                        const messages = await response.json();
+                        chatInterface.clearMessages();
+                        
+                        messages.forEach(msg => {
+                            chatInterface.addMessage(msg.type, msg.content);
+                        });
+                    } else {
+                        // Mock messages for demonstration
+                        this.loadMockMessages(conversationId);
+                    }
+                } catch (error) {
+                    console.error('Error loading messages:', error);
+                    this.loadMockMessages(conversationId);
+                }
+            }
+
+            loadMockMessages(conversationId) {
+                const mockMessages = {
+                    '1': [
+                        { type: 'ai', content: 'Thank you for connecting with me. To begin, could you please tell me a bit about the kind of business you\'re thinking of starting?' },
+                        { type: 'user', content: 'I want to start a tech consulting business for small businesses.' },
+                        { type: 'ai', content: 'That sounds like a valuable service! What specific areas of technology are you most experienced in, and what types of challenges do you think small businesses face most often?' },
+                        { type: 'user', content: 'I have experience in web development, digital marketing, and basic IT support. Small businesses often struggle with outdated websites and lack of online presence.' }
+                    ],
+                    '2': [
+                        { type: 'ai', content: 'Thank you for joining this session. To start, could you describe who your ideal customer is and what specific need or problem your product or service will address in the market?' },
+                        { type: 'user', content: 'I\'m targeting millennials who want a more personalized e-commerce experience.' },
+                        { type: 'ai', content: 'Millennials are indeed a significant market segment. What specific aspects of personalization are you thinking about, and what gaps do you see in current e-commerce platforms?' }
+                    ]
+                };
+
+                const messages = mockMessages[conversationId] || [];
+                chatInterface.clearMessages();
+                
+                messages.forEach(msg => {
+                    chatInterface.addMessage(msg.type, msg.content);
+                });
+            }
+
+            async deleteConversation(conversationId) {
+                if (!confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch(`http://192.168.1.33:5000/api/v1/conversations/${conversationId}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (response.ok) {
+                        this.conversations = this.conversations.filter(conv => conv.id !== conversationId);
+                        this.displayConversations();
+                        
+                        // If this was the active conversation, reset
+                        if (chatInterface.checkpointId === this.conversations.find(c => c.id === conversationId)?.checkpoint_id) {
+                            chatInterface.checkpointId = null;
+                            document.getElementById('currentConversationInfo').innerHTML = `
+                                <strong>Current:</strong> New Conversation | Type: ${chatInterface.currentChatType.replace('_', ' ')}
+                            `;
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error deleting conversation:', error);
+                    alert('Failed to delete conversation. Please try again.');
+                }
+            }
+
+            async viewSummaryDetails(summaryId) {
+                const summary = this.summaries.find(s => s.id === summaryId);
+                if (!summary) return;
+
+                const modal = document.getElementById('conversationModal');
+                const modalBody = document.getElementById('modalBody');
+
+                modalBody.innerHTML = `
+                    <div class="summary-details">
+                        <h4>📋 ${summary.chat_type.replace('_', ' ')} Summary</h4>
+                        <p><strong>Last Updated:</strong> ${new Date(summary.updated_at).toLocaleString()}</p>
+                        <p><strong>Project:</strong> ${summary.project_id}</p>
+                        <hr style="margin: 20px 0;">
+                        <div class="summary-content-full">
+                            ${summary.content}
+                        </div>
+                        <hr style="margin: 20px 0;">
+                        <button class="db-button" onclick="databaseManager.editSummary('${summaryId}')">✏️ Edit Summary</button>
+                        <button class="db-button" onclick="databaseManager.deleteSummary('${summaryId}')" style="background: #ef4444;">🗑️ Delete Summary</button>
+                    </div>
+                `;
+
+                modal.classList.add('active');
+            }
+
+            async editSummary(summaryId) {
+                const summary = this.summaries.find(s => s.id === summaryId);
+                if (!summary) return;
+
+                const newContent = prompt('Edit summary content:', summary.content);
+                if (newContent && newContent !== summary.content) {
+                    try {
+                        const response = await fetch(`http://192.168.1.33:5000/api/v1/summaries/${summaryId}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ content: newContent })
+                        });
+
+                        if (response.ok) {
+                            summary.content = newContent;
+                            summary.updated_at = new Date().toISOString();
+                            this.displaySummaries();
+                            this.closeModal();
+                        }
+                    } catch (error) {
+                        console.error('Error updating summary:', error);
+                        alert('Failed to update summary. Please try again.');
+                    }
+                }
+            }
+
+            async deleteSummary(summaryId) {
+                if (!confirm('Are you sure you want to delete this summary?')) return;
+
+                try {
+                    const response = await fetch(`http://192.168.1.33:5000/api/v1/summaries/${summaryId}`, {
+                        method: 'DELETE'
+                    });
+
+                    if (response.ok) {
+                        this.summaries = this.summaries.filter(s => s.id !== summaryId);
+                        this.displaySummaries();
+                        this.closeModal();
+                    }
+                } catch (error) {
+                    console.error('Error deleting summary:', error);
+                    alert('Failed to delete summary. Please try again.');
+                }
+            }
+
+            async exportData() {
+                const data = {
+                    conversations: this.conversations,
+                    summaries: this.summaries,
+                    exportDate: new Date().toISOString()
+                };
+
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `chat_data_export_${new Date().toISOString().split('T')[0]}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            async clearAllData() {
+                if (!confirm('⚠️ This will delete ALL conversations and summaries. This action cannot be undone!\n\nAre you absolutely sure?')) {
+                    return;
+                }
+
+                try {
+                    const response = await fetch('http://192.168.1.33:5000/api/v1/conversations/clear-all', {
+                        method: 'DELETE'
+                    });
+
+                    if (response.ok) {
+                        this.conversations = [];
+                        this.summaries = [];
+                        this.filterAndDisplayData();
+                        
+                        // Reset current conversation
+                        chatInterface.checkpointId = null;
+                        document.getElementById('currentConversationInfo').innerHTML = `
+                            <strong>Current:</strong> New Conversation | Type: ${chatInterface.currentChatType.replace('_', ' ')}
+                        `;
+                        
+                        alert('✅ All data has been cleared successfully.');
+                    }
+                } catch (error) {
+                    console.error('Error clearing data:', error);
+                    alert('❌ Failed to clear data. Please try again.');
+                }
+            }
+
+            closeModal() {
+                document.getElementById('conversationModal').classList.remove('active');
+            }
+
+            getTimeAgo(dateString) {
+                const date = new Date(dateString);
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMins = Math.floor(diffMs / (1000 * 60));
+                const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+                const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+                if (diffMins < 60) return `${diffMins}m ago`;
+                if (diffHours < 24) return `${diffHours}h ago`;
+                return `${diffDays}d ago`;
+            }
+        }
+
+        // Enhanced Chat Interface Class
+        class ChatInterface {
+            constructor() {
+                this.currentChatType = 'executive_summary';
+                this.checkpointId = null;
+                this.isStreaming = false;
+                this.currentMessageElement = null;
+                
+                this.initializeElements();
+                this.attachEventListeners();
+                this.autoResizeTextarea();
+                this.updateCurrentConversationInfo();
+            }
+
+            initializeElements() {
+                this.messagesContainer = document.getElementById('chatMessages');
+                this.messageInput = document.getElementById('messageInput');
+                this.sendButton = document.getElementById('sendButton');
+                this.clerkIdInput = document.getElementById('clerkId');
+                this.projectIdInput = document.getElementById('projectId');
+                this.chatTypeButtons = document.querySelectorAll('.chat-type-btn');
+            }
+
+            attachEventListeners() {
+                // Send button click
+                this.sendButton.addEventListener('click', () => this.sendMessage());
+                
+                // Enter key to send (Shift+Enter for new line)
+                this.messageInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                // Chat type selection
+                this.chatTypeButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        this.chatTypeButtons.forEach(btn => btn.classList.remove('active'));
+                        button.classList.add('active');
+                        this.currentChatType = button.dataset.type;
+                        this.checkpointId = null; // Reset checkpoint for new chat type
+                        this.clearMessages();
+                        this.addMessage('ai', `Switched to ${button.textContent}. Let's start fresh!`);
+                        this.updateCurrentConversationInfo();
+                    });
+                });
+
+                // Close modal when clicking outside
+                document.getElementById('conversationModal').addEventListener('click', (e) => {
+                    if (e.target.id === 'conversationModal') {
+                        databaseManager.closeModal();
+                    }
+                });
+            }
+
+            updateCurrentConversationInfo() {
+                const info = document.getElementById('currentConversationInfo');
+                if (this.checkpointId) {
+                    info.innerHTML = `<strong>Current:</strong> ${this.currentChatType.replace('_', ' ')} | ID: ${this.checkpointId.slice(0, 8)}...`;
+                } else {
+                    info.innerHTML = `<strong>Current:</strong> New Conversation | Type: ${this.currentChatType.replace('_', ' ')}`;
+                }
+            }
+
+            autoResizeTextarea() {
+                this.messageInput.addEventListener('input', () => {
+                    this.messageInput.style.height = 'auto';
+                    this.messageInput.style.height = Math.min(this.messageInput.scrollHeight, 120) + 'px';
+                });
+            }
+
+            async sendMessage() {
+                const message = this.messageInput.value.trim();
+                if (!message || this.isStreaming) return;
+
+                const clerkId = this.clerkIdInput.value.trim();
+                const projectId = this.projectIdInput.value.trim();
+                
+                if (!clerkId || !projectId) {
+                    this.showError('Please enter both Clerk ID and Project ID');
+                    return;
+                }
+
+                // Add user message
+                this.addMessage('user', message);
+                this.messageInput.value = '';
+                this.messageInput.style.height = 'auto';
+                
+                // Show typing indicator
+                this.showTypingIndicator();
+                this.setStreamingState(true);
+
+                try {
+                    await this.streamResponse(message, clerkId, projectId);
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    this.showError('Failed to send message. Please try again.');
+                } finally {
+                    this.hideTypingIndicator();
+                    this.setStreamingState(false);
+                }
+            }
+
+            async streamResponse(message, clerkId, projectId) {
+                const params = new URLSearchParams({
+                    message: message,
+                    clerk_id: clerkId,
+                    project_id: projectId,
+                    chat_type: this.currentChatType,
+                    ...(this.checkpointId && { checkpoint_id: this.checkpointId })
+                });
+
+                const response = await fetch(`http://localhost:8000/chat_stream?${params}`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'text/event-stream',
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                
+                this.hideTypingIndicator();
+                this.currentMessageElement = this.addMessage('ai', '');
+
+                try {
+                    while (true) {
+                        const { done, value } = await reader.read();
+                        if (done) break;
+
+                        const chunk = decoder.decode(value);
+                        const lines = chunk.split('\n');
+
+                        for (const line of lines) {
+                            if (line.startsWith('data: ')) {
+                                try {
+                                    const data = JSON.parse(line.slice(6));
+                                    await this.handleStreamEvent(data);
+                                } catch (e) {
+                                    console.error('Error parsing stream data:', e);
+                                }
+                            }
+                        }
+                    }
+                } finally {
+                    reader.releaseLock();
+                }
+            }
+
+            async handleStreamEvent(data) {
+                switch (data.type) {
+                    case 'checkpoint':
+                        this.checkpointId = data.checkpoint_id;
+                        this.updateCurrentConversationInfo();
+                        this.showMemoryInfo(`New conversation started (ID: ${data.checkpoint_id.slice(0, 8)}...)`);
+                        // Refresh the database manager to show new conversation
+                        setTimeout(() => databaseManager.loadAllConversations(), 1000);
+                        break;
+
+                    case 'content':
+                        if (this.currentMessageElement) {
+                            const contentDiv = this.currentMessageElement.querySelector('.message-content');
+                            contentDiv.textContent += data.content;
+                            this.scrollToBottom();
+                        }
+                        break;
+
+                    case 'search_start':
+                        this.showSearchIndicator(`Searching for: "${data.query}"`);
+                        break;
+
+                    case 'search_results':
+                        this.hideSearchIndicator();
+                        if (data.urls && data.urls.length > 0) {
+                            this.showMemoryInfo(`Found ${data.urls.length} relevant sources`);
+                        }
+                        break;
+
+                    case 'end':
+                        this.currentMessageElement = null;
+                        // Refresh database after conversation ends
+                        setTimeout(() => databaseManager.loadAllConversations(), 500);
+                        break;
+                }
+            }
+
+            addMessage(type, content) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${type}`;
+                
+                messageDiv.innerHTML = `
+                    <div class="message-avatar">${type === 'user' ? 'You' : 'AI'}</div>
+                    <div class="message-content">${content}</div>
+                `;
+
+                this.messagesContainer.appendChild(messageDiv);
+                this.scrollToBottom();
+                return messageDiv;
+            }
+
+            showTypingIndicator() {
+                const existingIndicator = this.messagesContainer.querySelector('.typing-indicator');
+                if (existingIndicator) return;
+
+                const typingDiv = document.createElement('div');
+                typingDiv.className = 'message ai';
+                typingDiv.innerHTML = `
+                    <div class="message-avatar">AI</div>
+                    <div class="typing-indicator" style="display: block;">
+                        <div class="typing-dots">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+                    </div>
+                `;
+
+                this.messagesContainer.appendChild(typingDiv);
+                this.scrollToBottom();
+            }
+
+            hideTypingIndicator() {
+                const typingIndicator = this.messagesContainer.querySelector('.message:has(.typing-indicator)');
+                if (typingIndicator) {
+                    typingIndicator.remove();
+                }
+            }
+
+            showSearchIndicator(text) {
+                this.hideSearchIndicator();
+                const searchDiv = document.createElement('div');
+                searchDiv.className = 'search-indicator active';
+                searchDiv.innerHTML = `🔍 ${text}`;
+                this.messagesContainer.appendChild(searchDiv);
+                this.scrollToBottom();
+            }
+
+            hideSearchIndicator() {
+                const searchIndicator = this.messagesContainer.querySelector('.search-indicator');
+                if (searchIndicator) {
+                    searchIndicator.remove();
+                }
+            }
+
+            showMemoryInfo(text) {
+                const memoryDiv = document.createElement('div');
+                memoryDiv.className = 'memory-info';
+                memoryDiv.innerHTML = `💾 ${text}`;
+                this.messagesContainer.appendChild(memoryDiv);
+                this.scrollToBottom();
+                
+                // Auto-remove after 5 seconds
+                setTimeout(() => {
+                    if (memoryDiv.parentNode) {
+                        memoryDiv.remove();
+                    }
+                }, 5000);
+            }
+
+            showError(text) {
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'error-message';
+                errorDiv.innerHTML = `❌ ${text}`;
+                this.messagesContainer.appendChild(errorDiv);
+                this.scrollToBottom();
+                
+                // Auto-remove after 8 seconds
+                setTimeout(() => {
+                    if (errorDiv.parentNode) {
+                        errorDiv.remove();
+                    }
+                }, 8000);
+            }
+
+            setStreamingState(streaming) {
+                this.isStreaming = streaming;
+                this.sendButton.disabled = streaming;
+                this.messageInput.disabled = streaming;
+                
+                if (streaming) {
+                    this.sendButton.innerHTML = `
+                        <div style="width: 16px; height: 16px; border: 2px solid #fff; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    `;
+                } else {
+                    this.sendButton.innerHTML = `
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22,2 15,22 11,13 2,9 22,2"></polygon>
+                        </svg>
+                    `;
+                }
+            }
+
+            clearMessages() {
+                // Keep only system messages, remove user/ai conversation
+                const messages = this.messagesContainer.querySelectorAll('.message, .memory-info, .search-indicator, .error-message');
+                messages.forEach(msg => {
+                    if (!msg.textContent.includes('Welcome! I\'m your AI Business Advisor')) {
+                        msg.remove();
+                    }
+                });
+            }
+
+            scrollToBottom() {
+                this.messagesContainer.scrollTop = this.messagesContainer.scrollHeight;
+            }
+        }
+
+        // Initialize both components
+        let databaseManager;
+        let chatInterface;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            databaseManager = new DatabaseManager();
+            chatInterface = new ChatInterface();
+        });
+    </script>
+</body>
+</html>
